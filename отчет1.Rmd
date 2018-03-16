@@ -1,0 +1,106 @@
+---
+title: "Untitled"
+author: "Lukyanova Anastasia"
+date: '16 марта 2018 г '
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library('boot') 
+data(Boston)
+```
+
+Оценим стандартную ошибку модели для линейных регрессионных моделей 
+а) со всеми объясняющими переменными; 
+б) только с непрерывными объясняющими переменными
+Будем использовать методы:
+* методом проверочной выборки с долей обучающей 50%;
+* методом LOOCV;
+* k-кратной кросс-валидацией с k=5 и k=10
+
+Загрузим данные и проведем все необходимые вычисления:
+
+```{r zadanie1, message=FALSE}
+
+model2 <- lm(crim ~ indus + age + indus:chas,
+             data = Boston)
+summary(model2)
+#общее число наблюдений
+m <- nrow(Boston)
+
+# доля обучающей выборки
+train.percent <- 0.5 
+
+# выбрать наблюдения в обучающую выборку
+inTrain <- sample(m, m * train.percent)
+inTrain
+
+# Линейная модель(a) ##############################################################
+
+# присоединить таблицу с данными: названия стоблцов будут доступны напрямую
+attach(Boston)
+# подгонка линейной модели на обучающей выборке
+fit.lm.1 <- lm(crim ~ indus + age + indus:chas, 
+               subset = inTrain)
+
+# считаем MSE на тестовой выборке
+mean.a.1 <- mean((crim[-inTrain] - predict(fit.lm.1,
+                              Boston[-inTrain, ]))^2)
+
+# отсоединить таблицу с данными
+detach(Boston)
+
+# Квадратичная модель ##########################################################
+
+# присоединить таблицу с данными: названия стоблцов будут доступны напрямую
+attach(Boston)
+# подгонка линейной модели на обучающей выборке
+fit.lm.2 <- lm(crim ~ poly(age,2) + poly(indus, 2) + indus:chas, 
+               subset = inTrain)
+summary(fit.lm.2)
+fit.lm.2.1 <- lm(crim ~ poly(age,2) + poly(indus, 2), 
+               subset = inTrain)
+summary(fit.lm.2.1)
+# считаем MSE на тестовой выборке
+mean.a.2 <- mean((crim[-inTrain] - predict(fit.lm.2.1,
+                              Boston[-inTrain, ]))^2)
+
+# отсоединить таблицу с данными
+detach(Boston)
+
+# Кубическая модель ############################################################
+
+# присоединить таблицу с данными: названия стоблцов будут доступны напрямую
+attach(Boston)
+# подгонка линейной модели на обучающей выборке
+fit.lm.3 <- lm(crim ~ poly(age,3) + poly(indus, 3) + indus:chas, 
+               subset = inTrain) 
+summary(fit.lm.3)
+# считаем MSE на тестовой выборке
+mean.a.3 <- mean((crim[-inTrain] - predict(fit.lm.3,
+                              Boston[-inTrain, ]))^2)
+
+# отсоединить таблицу с данными
+detach(Boston)
+
+
+# k-кратная перекрёстная проверка ==============================================
+
+# оценим точность полиномиальных моделей, меняя степень
+# вектор с ошибками по 10-кратной кросс-валидации
+cv.err.k.fold <- rep(0, 5)
+names(cv.err.k.fold) <- 1:5
+# цикл по степеням полиномов
+for (i in 1:5){
+  fit.glm <- glm(crim ~ poly(age,3) + poly(indus, 3) + indus:chas, data = Boston)
+  cv.err.k.fold[i] <- cv.glm(Boston, fit.glm,
+                             K = 10)$delta[1]
+}
+# результат
+cv.err.k.fold
+```
+
+Наименьшая ошибка у кубической модели. Она равна 49,76. У к-кратной выборки наименьшая ошибка у i=1. 
+   
